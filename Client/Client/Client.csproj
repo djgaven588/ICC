@@ -45,9 +45,21 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Telepathy\Client.cs" />
+    <Compile Include="Telepathy\Common.cs" />
+    <Compile Include="Telepathy\EventType.cs" />
+    <Compile Include="Telepathy\Logger.cs" />
+    <Compile Include="Telepathy\Message.cs" />
+    <Compile Include="Telepathy\NetworkStreamExtensions.cs" />
+    <Compile Include="Telepathy\SafeQueue.cs" />
+    <Compile Include="Telepathy\Server.cs" />
+    <Compile Include="Telepathy\Utils.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Telepathy\Telepathy.csproj" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
