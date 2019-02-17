@@ -27,6 +27,19 @@ namespace Client
         public void Loop()
         {
             bool clientOpen = true;
+            Queue<string> messagesToSend = new Queue<string>();
+
+            var thread = new Thread(() => {
+                while (clientOpen)
+                {
+                    string input = Console.ReadLine();
+                    messagesToSend.Enqueue(input);
+                }
+            });
+
+            thread.IsBackground = true;
+            thread.Start();
+
             Telepathy.Message msg;
             while (clientOpen)
             {
@@ -39,8 +52,7 @@ namespace Client
                             SendMessage("Hello server!");
                             break;
                         case Telepathy.EventType.Data:
-                            Console.WriteLine("Received From Server: " + Encoding.UTF8.GetString(msg.data));
-                            SendMessage("djgaven588");
+                            Console.WriteLine(Encoding.UTF8.GetString(msg.data));
                             break;
                         case Telepathy.EventType.Disconnected:
                             Console.WriteLine("Disconnected from server");
@@ -50,7 +62,12 @@ namespace Client
                     }
                 }
 
-                Thread.Sleep(1000);
+                while (messagesToSend.Count > 0)
+                {
+                    SendMessage(messagesToSend.Dequeue());
+                }
+
+                Thread.Sleep(250);
             }
         }
 
