@@ -82,6 +82,7 @@ namespace Client
                                     if (msgContents == "V")
                                     {
                                         Log("Your password was valid! Continuing...", "Valid Password");
+                                        state = ClientState.Nickname;
                                     }
                                     else
                                     {
