@@ -10,6 +10,15 @@ namespace Client
     class Program
     {
         private static Telepathy.Client client;
+        private ClientState state = ClientState.WaitingForPasswordStatus;
+
+        private enum ClientState
+        {
+            WaitingForPasswordStatus,
+            PasswordEnabled,
+            Nickname,
+            Established
+        }
 
         static void Main(string[] args)
         {
@@ -20,6 +29,8 @@ namespace Client
         {
             client = new Telepathy.Client();
             client.Connect("localhost", 9999);
+
+            Log("Connecting to server at address 'localhost', and port 9999", "Connecting");
 
             Loop();
         }
@@ -48,14 +59,54 @@ namespace Client
                     switch (msg.eventType)
                     {
                         case Telepathy.EventType.Connected:
-                            Console.WriteLine("Connected to server!");
-                            SendMessage("Hello server!");
+                            Log("Connected to server! Waiting for password status...", "Connected");
                             break;
                         case Telepathy.EventType.Data:
-                            Console.WriteLine(Encoding.UTF8.GetString(msg.data));
+                            string msgContents = Encoding.UTF8.GetString(msg.data);
+                            switch (state)
+                            {
+                                case ClientState.WaitingForPasswordStatus:
+                                    if (msgContents.Length > 0)
+                                    {
+                                        Log("This server has a password, please enter the password for this server: ", "Password Protection");
+                                        state = ClientState.PasswordEnabled;
+                                    }
+                                    else
+                                    {
+                                        Log("This server does not have a password. Continuing...", "Password Protection");
+                                        SendMessage("");
+                                        state = ClientState.Nickname;
+                                    }
+                                    break;
+                                case ClientState.PasswordEnabled:
+                                    if (msgContents == "V")
+                                    {
+                                        Log("Your password was valid! Continuing...", "Valid Password");
+                                    }
+                                    else
+                                    {
+                                        Log(msgContents, "Invalid Password");
+                                    }
+                                    break;
+                                case ClientState.Nickname:
+                                    if (msgContents == "V")
+                                    {
+                                        state = ClientState.Established;
+                                    }
+                                    else
+                                    {
+                                        Log(msgContents, "Nickname");
+                                    }
+                                    break;
+                                case ClientState.Established:
+                                    Log(msgContents, "Message");
+                                    break;
+                                default:
+                                    break;
+                            }
                             break;
                         case Telepathy.EventType.Disconnected:
-                            Console.WriteLine("Disconnected from server");
+                            Log("Disconnected from server", "Disconnected");
                             break;
                         default:
                             break;
@@ -74,6 +125,14 @@ namespace Client
         public void SendMessage(string content)
         {
             client.Send(Encoding.UTF8.GetBytes(content));
+        }
+
+        public static void Log(string content, string from)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine(from + ":");
+            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.WriteLine(content);
         }
     }
 }

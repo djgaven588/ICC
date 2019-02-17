@@ -15,6 +15,8 @@ namespace Server
         private static Dictionary<int, ConnectionData> connections = new Dictionary<int, ConnectionData>();
         private static HashSet<string> currentUsernames = new HashSet<string>();
         private static string dailyMsg;
+        private static bool passwordProtected;
+        private static string password;
 
         private struct ConnectionData
         {
@@ -80,11 +82,24 @@ namespace Server
             {
                 Log("A daily message was not specified in the program arguments, it is recommended to set this up. Using default daily message...", "Daily Message");
                 dailyMsg = "Welcome to the server! This server does not have a daily message set.\nIf you are the server owner, make sure to run the server with the first parameter as the daily message!";
+                passwordProtected = false;
+                Log("This server is not password protected. This is fine if you want anyone and everyone to connect, but can be changed to add security. This can be changed by editing the second program argument", "Password Protection");
             }
             else
             {
-                Log("The daily message is: " + args[0] + ". You can change this by changing the first program arugment when starting the server.", "Daily Message");
+                Log("The daily message is: " + args[0] + ". You can change this by changing the first program argument when starting the server.", "Daily Message");
                 dailyMsg = args[0];
+
+                if (args.Length > 1 && args[1] != null)
+                {
+                    passwordProtected = true;
+                    Log("This server is password protected. The password is " + args[1] + ". You can change this by changing the second program argument when starting the server.", "Password Protection");
+                }
+                else
+                {
+                    passwordProtected = false;
+                    Log("This server is not password protected. This is fine if you want anyone and everyone to connect, but can be changed to add security. This can be changed by editing the second program argument", "Password Protection");
+                }
             }
             new Program().Setup();
         }
@@ -98,7 +113,7 @@ namespace Server
             server = new Telepathy.Server();
             server.Start(9999);
             Log("Server online! Connect to it using the port 9999\nThe local ip of the server is: " + GetLocalIPAddress()
-                + "\nIf you want this server to be access by the outside world, port forward port 9999 and give users your public address." 
+                + "\nIf you want this server to be accessed by the outside world, port forward port 9999 and give users your public address." 
                 + "\nNOTE: You, the server host, are responsible for anything that happens because of port forwarding. Be careful.", "Server Startup");
             Loop();
         }
@@ -116,7 +131,9 @@ namespace Server
                     {
                         case Telepathy.EventType.Connected:
                             connections.Add(msg.connectionId, new ConnectionData(msg.connectionId));
-                            Log("A user has connected, waiting for communication to be confirmed by the client.", "New Connection");
+                            connections[msg.connectionId].SendMessage(passwordProtected ? "passwordProtected" : "");
+                            Log("A user has connected, they have been notified of the servers password protection status.", "New Connection");
+                            
                             break;
                         case Telepathy.EventType.Data:
                             string msgContents = Encoding.UTF8.GetString(msg.data);
@@ -124,9 +141,27 @@ namespace Server
                             ConnectionData connection = connections[msg.connectionId];
                             if (connection.currentStage == ConnectionData.ConnectionStage.NewConnection)
                             {
-                                Log("A user has established communication. Waiting for a username...", "User Connected");
-                                connection.currentStage = ConnectionData.ConnectionStage.AwaitingNickname;
-                                connection.SendMessage("Welcome to the server client! Please send your nickname.");
+                                if (passwordProtected)
+                                {
+                                    if (msgContents == password)
+                                    {
+                                        Log("A user has established communication. Waiting for a username...", "User Login Success");
+                                        connection.currentStage = ConnectionData.ConnectionStage.AwaitingNickname;
+                                        connection.SendMessage("V");
+                                        connection.SendMessage("Welcome to the server client! Please send your nickname.");
+                                    }
+                                    else
+                                    {
+                                        Log("A user tried to connect with a password which didn't match. Notifying user.", "User Login Failed");
+                                        connection.SendMessage("Your password was invalid. Please try again.");
+                                    }
+                                }
+                                else
+                                {
+                                    Log("A user has established communication. Waiting for a username...", "User Connected");
+                                    connection.currentStage = ConnectionData.ConnectionStage.AwaitingNickname;
+                                    connection.SendMessage("Welcome to the server client! Please send your nickname.");
+                                }
                             }
                             else if (connection.currentStage == ConnectionData.ConnectionStage.AwaitingNickname)
                             {
@@ -136,7 +171,10 @@ namespace Server
                                 {
                                     Log("The username '" + msgContents + "' was available and valid. Welcome " + msgContents + "!", "Nickname");
                                     connection.currentStage = ConnectionData.ConnectionStage.ConnectionEstablished;
-                                    connection.SendMessage("Welcome " + connection.nickname + "!\nDaily Message:\n" + dailyMsg);
+                                    connection.SendMessage("Welcome " + connection.nickname + "!");
+                                    connection.SendMessage("V");
+                                    connection.SendMessage("Server: Daily Message:\n" + dailyMsg);
+                                    BroadcastMsg("A user who goes by the name of " + msgContents + ", has joined the chat!");
                                 }
                                 else
                                 {
@@ -157,6 +195,10 @@ namespace Server
                             ConnectionData connectData = connections[msg.connectionId];
                             connectData.RemoveConnection();
                             Log((connectData.nickname != null ? "User " + connectData.nickname : "Unknown User") + " Disconnected", "Disconnection");
+                            if (connectData.nickname != null)
+                            {
+                                BroadcastMsg("A user who went by " + connectData.nickname + ", has left the chat... They shall me missed!");
+                            }
                             break;
                     }
                 }
