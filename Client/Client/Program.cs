@@ -22,15 +22,18 @@ namespace Client
 
         static void Main(string[] args)
         {
+            Console.Title = "ICC - Console Client";
             new Program().Setup();
         }
 
         public void Setup()
         {
             client = new Telepathy.Client();
-            client.Connect("localhost", 9999);
+            Log("Please enter the IP of the server below.", "Starting");
+            string ip = Console.ReadLine();
+            client.Connect(ip, 9999);
 
-            Log("Connecting to server at address 'localhost', and port 9999", "Connecting");
+            Log($"Connecting to server at address {ip}, and port 9999", "Connecting");
 
             Loop();
         }

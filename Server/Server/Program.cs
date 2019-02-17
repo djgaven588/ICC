@@ -78,6 +78,7 @@ namespace Server
 
         static void Main(string[] args)
         {
+            Console.Title = "ICC - Console Server";
             if (args == null || args.Length == 0 || args[0] == null)
             {
                 Log("A daily message was not specified in the program arguments, it is recommended to set this up. Using default daily message...", "Daily Message");
