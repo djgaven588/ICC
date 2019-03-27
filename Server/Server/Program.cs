@@ -9,14 +9,16 @@ using System.Threading.Tasks;
 
 namespace Server
 {
-    class Program
+    public class Program
     {
-        private static Telepathy.Server server;
-        private static Dictionary<int, ConnectionData> connections = new Dictionary<int, ConnectionData>();
-        private static HashSet<string> currentUsernames = new HashSet<string>();
-        private static string dailyMsg;
-        private static bool passwordProtected;
-        private static string password;
+        public static Telepathy.Server server;
+        public static Dictionary<int, ConnectionData> connections = new Dictionary<int, ConnectionData>();
+        public static HashSet<string> currentUsernames = new HashSet<string>();
+        public static string dailyMsg;
+        public static bool passwordProtected;
+        public static string password;
+
+        private static EventHandler handler = new CustomEventHandler();
 
         static void Main(string[] args)
         {
@@ -80,10 +82,7 @@ namespace Server
                     switch (msg.eventType)
                     {
                         case Telepathy.EventType.Connected:
-                            connections.Add(msg.connectionId, new ConnectionData(msg.connectionId));
-                            connections[msg.connectionId].SendMessage(passwordProtected ? "passwordProtected" : "");
-                            Debug.Log("A user has connected, they have been notified of the servers password protection status.", "New Connection");
-                            
+                            handler.OnConnect(msg.connectionId);
                             break;
                         case Telepathy.EventType.Data:
                             string msgContents = Encoding.UTF8.GetString(msg.data);
@@ -93,62 +92,27 @@ namespace Server
                             {
                                 if (passwordProtected)
                                 {
-                                    if (msgContents == password)
-                                    {
-                                        Debug.Log("A user has established communication. Waiting for a username...", "User Login Success");
-                                        connection.currentStage = ConnectionData.ConnectionStage.AwaitingNickname;
-                                        connection.SendMessage("V");
-                                        connection.SendMessage("Welcome to the server client! Please send your nickname.");
-                                    }
-                                    else
-                                    {
-                                        Debug.Log("A user tried to connect with a password which didn't match. Notifying user.", "User Login Failed");
-                                        connection.SendMessage("Your password was invalid. Please try again.");
-                                    }
+                                    handler.OnPasswordCheck(msgContents, connection);
                                 }
                                 else
                                 {
-                                    Debug.Log("A user has established communication. Waiting for a username...", "User Connected");
-                                    connection.currentStage = ConnectionData.ConnectionStage.AwaitingNickname;
-                                    connection.SendMessage("Welcome to the server client! Please send your nickname.");
+                                    handler.OnNotPasswordProtected(connection);
                                 }
                             }
                             else if (connection.currentStage == ConnectionData.ConnectionStage.AwaitingNickname)
                             {
-                                Debug.Log("A user has requested to use the username '" + msgContents + "'", "Nickname");
-                                bool result = connection.SetNickname(msgContents);
-                                if (result)
-                                {
-                                    Debug.Log("The username '" + msgContents + "' was available and valid. Welcome " + msgContents + "!", "Nickname");
-                                    connection.currentStage = ConnectionData.ConnectionStage.ConnectionEstablished;
-                                    connection.SendMessage("Welcome " + connection.nickname + "!");
-                                    connection.SendMessage("V");
-                                    connection.SendMessage("Server: Daily Message:\n" + dailyMsg);
-                                    BroadcastMsg("A user who goes by the name of " + msgContents + ", has joined the chat!");
-                                }
-                                else
-                                {
-                                    Debug.Log("The username '" + msgContents + "' was not available or not valid. The user was notified.", "Nickname");
-                                    connection.SendMessage("Your username is either too long, too short, or is already in use!\nMake sure your username is unique, greather than 3 characters, and less than 16 characters!");
-                                }
+                                handler.OnUsernameSetAttempt(msgContents, connection);
                             }
                             else
                             {
-                                Debug.Log(connection.nickname + " said: " + msgContents, "User Message");
-                                BroadcastMsg(connection.nickname + ": " + msgContents);
+                                handler.OnMessageReceived(msgContents, connection);
                             }
 
                             connections[connection.connectionId] = connection;
 
                             break;
                         case Telepathy.EventType.Disconnected:
-                            ConnectionData connectData = connections[msg.connectionId];
-                            connectData.RemoveConnection();
-                            Debug.Log((connectData.nickname != null ? "User " + connectData.nickname : "Unknown User") + " Disconnected", "Disconnection");
-                            if (connectData.nickname != null)
-                            {
-                                BroadcastMsg("A user who went by " + connectData.nickname + ", has left the chat... They shall me missed!");
-                            }
+                            handler.OnDisconnected(msg.connectionId);
                             break;
                     }
                 }
@@ -157,7 +121,7 @@ namespace Server
             }
         }
 
-        public void BroadcastMsg(string msg)
+        public static void BroadcastMsg(string msg)
         {
             byte[] data = Encoding.UTF8.GetBytes(msg);
             foreach (ConnectionData connection in connections.Values)

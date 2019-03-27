@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace Server
 {
-    class CustomEventHandler
+    public class CustomEventHandler : EventHandler
     {
+
     }
 }

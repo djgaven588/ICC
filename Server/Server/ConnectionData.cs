@@ -16,19 +16,19 @@ namespace Server
         {
             if (nickname != null)
             {
-                currentUsernames.Remove(nickname);
+                Program.currentUsernames.Remove(nickname);
             }
-            connections.Remove(connectionId);
+            Program.connections.Remove(connectionId);
         }
 
         public void SendMessage(string data)
         {
-            server.Send(connectionId, Encoding.UTF8.GetBytes(data));
+            Program.server.Send(connectionId, Encoding.UTF8.GetBytes(data));
         }
 
         public void SendMessage(byte[] data)
         {
-            server.Send(connectionId, data);
+            Program.server.Send(connectionId, data);
         }
 
         public void SetStage(ConnectionStage stage)
@@ -38,10 +38,10 @@ namespace Server
 
         public bool SetNickname(string nick)
         {
-            if (nick.Length < 16 && nick.Length > 3 && !currentUsernames.Contains(nick))
+            if (nick.Length < 16 && nick.Length > 3 && !Program.currentUsernames.Contains(nick))
             {
                 nickname = nick;
-                currentUsernames.Add(nick);
+                Program.currentUsernames.Add(nick);
                 return true;
             }
             return false;
