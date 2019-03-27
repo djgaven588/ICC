@@ -78,6 +78,10 @@ namespace Server
 
         static void Main(string[] args)
         {
+            if(args == null || args.Length == 0)
+            {
+                args = new string[] { "Welcome! This server is in debug mode...", "1337"};
+            }
             Console.Title = "ICC - Console Server";
             if (args == null || args.Length == 0 || args[0] == null)
             {
@@ -94,7 +98,8 @@ namespace Server
                 if (args.Length > 1 && args[1] != null)
                 {
                     passwordProtected = true;
-                    Log("This server is password protected. The password is " + args[1] + ". You can change this by changing the second program argument when starting the server.", "Password Protection");
+                    password = args[1];
+                    Log("This server is password protected. The password is " + password + ". You can change this by changing the second program argument when starting the server.", "Password Protection");
                 }
                 else
                 {
