@@ -18,71 +18,13 @@ namespace Server
         private static bool passwordProtected;
         private static string password;
 
-        private struct ConnectionData
-        {
-            public int connectionId;
-            public string nickname;
-            public ConnectionStage currentStage;
-
-            public void RemoveConnection()
-            {
-                if (nickname != null)
-                {
-                    currentUsernames.Remove(nickname);
-                }
-                connections.Remove(connectionId);
-            }
-
-            public void SendMessage(string data)
-            {
-                server.Send(connectionId, Encoding.UTF8.GetBytes(data));
-            }
-
-            public void SendMessage(byte[] data)
-            {
-                server.Send(connectionId, data);
-            }
-
-            public void SetStage(ConnectionStage stage)
-            {
-                this.currentStage = stage;
-            }
-
-            public bool SetNickname(string nick)
-            {
-                if (nick.Length < 16 && nick.Length > 3 && !currentUsernames.Contains(nick))
-                {
-                    nickname = nick;
-                    currentUsernames.Add(nick);
-                    return true;
-                }
-                return false;
-            }
-
-            public ConnectionData(int connectionId)
-            {
-                this.connectionId = connectionId;
-                currentStage = ConnectionStage.NewConnection;
-                nickname = null;
-            }
-
-            public enum ConnectionStage
-            {
-                NewConnection,
-                AwaitingRSAEncryptedResponse,
-                AwaitingAESEncryptedResonse,
-                AwaitingNickname,
-                ConnectionEstablished
-            }
-        }
-
         static void Main(string[] args)
         {
-            if(args == null || args.Length == 0)
+            if (args == null || args.Length == 0)
             {
-                args = new string[] { "Welcome! This server is in debug mode..."};
+                args = new string[] { "Welcome! This server is in debug mode..." };
             }
-            Console.Title = "ICC - Console Server";
+
             if (args == null || args.Length == 0 || args[0] == null)
             {
                 Debug.Log("A daily message was not specified in the program arguments, it is recommended to set this up. Using default daily message...", "Daily Message");
@@ -112,6 +54,8 @@ namespace Server
 
         public void Setup()
         {
+            Console.Title = "ICC - Console Server";
+
             Telepathy.Logger.Log = LogTelepathy;
             Telepathy.Logger.LogError = LogTelepathy;
             Telepathy.Logger.LogWarning = LogTelepathy;

@@ -43,7 +43,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ConnectionData.cs" />
+    <Compile Include="CustomEventHandler.cs" />
     <Compile Include="Debug.cs" />
+    <Compile Include="EventHandler.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Telepathy\Client.cs" />
