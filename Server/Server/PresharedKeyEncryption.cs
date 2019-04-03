@@ -17,7 +17,7 @@ namespace Server
 
             using (Aes aesAlg = Aes.Create())
             {
-                aesAlg.Key = Encoding.UTF8.GetBytes(key);
+                aesAlg.Key = Convert.FromBase64String(key);
 
                 aesAlg.GenerateIV();
                 IV = aesAlg.IV;
@@ -52,13 +52,16 @@ namespace Server
 
             using (Aes aesAlg = Aes.Create())
             {
-                aesAlg.Key = Encoding.UTF8.GetBytes(key);
+                aesAlg.Key = Convert.FromBase64String(key);
 
                 byte[] IV = new byte[aesAlg.BlockSize / 8];
                 byte[] cipherText = new byte[cipherTextCombined.Length - IV.Length];
 
                 Array.Copy(cipherTextCombined, IV, IV.Length);
                 Array.Copy(cipherTextCombined, IV.Length, cipherText, 0, cipherText.Length);
+
+                Debug.Log(Convert.ToBase64String(IV), "IV");
+                Debug.Log(Convert.ToBase64String(cipherText), "CipherText");
 
                 aesAlg.IV = IV;
 
@@ -92,6 +95,14 @@ namespace Server
                 byte[] aesKey = new byte[32];
                 random.GetBytes(aesKey);
                 return aesKey;
+            }
+        }
+
+        public static string GetAESHash(string aesKey)
+        {
+            using (SHA256 mySHA256 = SHA256.Create())
+            {
+                return Convert.ToBase64String(mySHA256.ComputeHash(Encoding.UTF8.GetBytes(aesKey)));
             }
         }
     }

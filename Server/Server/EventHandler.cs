@@ -43,7 +43,18 @@ namespace Server
         {
             if (Program.passwordProtected)
             {
-                OnPresharedAESCheck(PresharedKeyEncryption.AESDecrypt(Encoding.UTF8.GetBytes(response), Program.password), ref connection);
+                Debug.Log(response, "Encrypted password");
+                Debug.Log(Convert.ToBase64String(Encoding.UTF8.GetBytes(response)), "Encrypted password, base64");
+                Debug.Log(Encoding.UTF8.GetString(Encoding.UTF8.GetBytes(response)), "Encrypted password, to string");
+                try
+                {
+                    Debug.Log(PresharedKeyEncryption.GetAESHash(Program.password), "Hash");
+                    OnPresharedAESCheck(PresharedKeyEncryption.AESDecrypt(Encoding.UTF8.GetBytes(response), PresharedKeyEncryption.GetAESHash(Program.password)), ref connection);
+                }
+                catch (Exception e)
+                {
+                    Debug.Log(e.ToString(), "EXCEPTION");
+                }
             }
             else
             {
@@ -58,7 +69,7 @@ namespace Server
                 Debug.Log("A user has established communication. Waiting for a username...", "User Login Success");
                 connection.currentStage = ConnectionData.ConnectionStage.AwaitingNickname;
                 connection.SendMessage("V");
-                string newKey = Encoding.UTF8.GetString(PresharedKeyEncryption.GenerateAESKey());
+                string newKey = Convert.ToBase64String(PresharedKeyEncryption.GenerateAESKey());
                 connection.SendMessage(PresharedKeyEncryption.AESEncrypt(newKey, Program.password));
                 connection.aesCommunicationKey = newKey;
                 connection.SendMessage("Welcome to the server client! Please send your nickname.");

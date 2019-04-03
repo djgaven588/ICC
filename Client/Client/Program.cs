@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Client
 {
-    class Program
+    public class Program
     {
         private static Telepathy.Client client;
         private ClientState state = ClientState.WaitingForPasswordStatus;
@@ -95,19 +95,22 @@ namespace Client
                                         encryption = EncryptionType.PRESHARED_AES;
                                         Log("This server has encryption, and a password. Pleas enter the password...", "Encryption / Password");
                                         SendMessage("Yes");
+                                        state = ClientState.PasswordEnabled;
                                     }
                                     else if (msgContents == "N/A")
                                     {
                                         encryption = EncryptionType.N_A;
                                         Log("This server has no encryption, and no password. Continuing...", "Encryption");
                                         SendMessage("Yes");
+                                        SendMessage("");
+                                        state = ClientState.Nickname;
                                     }
                                     else
                                     {
                                         Log($"This server wants to use {msgContents} encryption, but this client doesn't support it. Notifying...", "Encryption");
                                         SendMessage("Not compatible");
+                                        state = ClientState.Established;
                                     }
-                                    state = ClientState.PasswordEnabled;
                                     break;
                                 case ClientState.PasswordEnabled:
                                     if (msgContents == "V")
@@ -161,7 +164,11 @@ namespace Client
 
         public void SendMessage(string content)
         {
-            client.Send((futureMessagesEncrypted) ? PresharedAESEncryption.AESEncrypt(content, aesKey): Encoding.UTF8.GetBytes(content));
+            if (state == ClientState.PasswordEnabled)
+            {
+                aesKey = PresharedAESEncryption.GetAESHash(content);
+            }
+            client.Send((futureMessagesEncrypted || state == ClientState.PasswordEnabled) ? PresharedAESEncryption.AESEncrypt(content, aesKey): Encoding.UTF8.GetBytes(content));
         }
 
         public static void Log(string content, string from)

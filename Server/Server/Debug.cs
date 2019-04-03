@@ -8,12 +8,12 @@ namespace Server
 {
     public static class Debug
     {
-        public static void Log(string message, string from)
+        public static void Log(object message, string from)
         {
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine(from + ":");
             Console.ForegroundColor = ConsoleColor.Gray;
-            Console.WriteLine(message);
+            Console.WriteLine(message.ToString());
         }
     }
 }
