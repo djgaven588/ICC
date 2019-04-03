@@ -57,11 +57,11 @@ namespace Server
             {
                 Debug.Log("A user has established communication. Waiting for a username...", "User Login Success");
                 connection.currentStage = ConnectionData.ConnectionStage.AwaitingNickname;
-                connection.SendMessage("Welcome to the server client! Please send your nickname.");
                 connection.SendMessage("V");
-                byte[] newKey = PresharedKeyEncryption.GenerateAESKey();
-                connection.aesCommunicationKey = Encoding.UTF8.GetString(newKey);
-                connection.SendMessage(PresharedKeyEncryption.AESEncrypt(connection.aesCommunicationKey, Program.password));
+                string newKey = Encoding.UTF8.GetString(PresharedKeyEncryption.GenerateAESKey());
+                connection.SendMessage(PresharedKeyEncryption.AESEncrypt(newKey, Program.password));
+                connection.aesCommunicationKey = newKey;
+                connection.SendMessage("Welcome to the server client! Please send your nickname.");
             }
             else
             {

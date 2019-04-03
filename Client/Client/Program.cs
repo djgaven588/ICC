@@ -15,6 +15,8 @@ namespace Client
         private EncryptionType encryption = EncryptionType.N_A;
         private string aesKey = null;
 
+        private bool futureMessagesEncrypted = false;
+
         private enum ClientState
         {
             WaitingForPasswordStatus,
@@ -54,21 +56,22 @@ namespace Client
             bool clientOpen = true;
             Queue<string> messagesToSend = new Queue<string>();
 
-            var thread = new Thread(() => {
+            var thread = new Thread(() =>
+            {
                 while (clientOpen)
                 {
                     string input = Console.ReadLine();
                     messagesToSend.Enqueue(input);
                 }
-            });
-
-            thread.IsBackground = true;
+            })
+            {
+                IsBackground = true
+            };
             thread.Start();
 
-            Telepathy.Message msg;
             while (clientOpen)
             {
-                while (client.GetNextMessage(out msg))
+                while (client.GetNextMessage(out Telepathy.Message msg))
                 {
                     switch (msg.eventType)
                     {
@@ -76,7 +79,7 @@ namespace Client
                             Log("Connected to server! Waiting for password status...", "Connected");
                             break;
                         case Telepathy.EventType.Data:
-                            string msgContents = Encoding.UTF8.GetString(msg.data);
+                            string msgContents = (futureMessagesEncrypted) ? PresharedAESEncryption.AESDecrypt(msg.data, aesKey): Encoding.UTF8.GetString(msg.data);
                             switch (state)
                             {
                                 case ClientState.WaitingForPasswordStatus:
@@ -111,6 +114,7 @@ namespace Client
                                     {
                                         Log("Your password was valid! Continuing...", "Valid Password");
                                         state = (encryption == EncryptionType.PRESHARED_AES) ? ClientState.FinalizeAESEncryption : ClientState.Nickname;
+                                        futureMessagesEncrypted = encryption == EncryptionType.PRESHARED_AES;
                                     }
                                     else
                                     {
@@ -118,7 +122,8 @@ namespace Client
                                     }
                                     break;
                                 case ClientState.FinalizeAESEncryption:
-
+                                    aesKey = msgContents;
+                                    state = ClientState.Nickname;
                                     break;
                                 case ClientState.Nickname:
                                     if (msgContents == "V")
@@ -156,7 +161,7 @@ namespace Client
 
         public void SendMessage(string content)
         {
-            client.Send(Encoding.UTF8.GetBytes(content));
+            client.Send((futureMessagesEncrypted) ? PresharedAESEncryption.AESEncrypt(content, aesKey): Encoding.UTF8.GetBytes(content));
         }
 
         public static void Log(string content, string from)
