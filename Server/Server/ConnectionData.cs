@@ -8,10 +8,10 @@ namespace Server
 {
     public struct ConnectionData
     {
-        public int connectionId;
-        public string nickname;
-        public ConnectionStage currentStage;
-        public string aesCommunicationKey;
+        private readonly int connectionId;
+        private string nickname;
+        private ConnectionStage currentStage;
+        private string aesCommunicationKey;
 
         public void RemoveConnection()
         {
@@ -35,6 +35,11 @@ namespace Server
             this.currentStage = stage;
         }
 
+        public ConnectionStage GetConnectionStage()
+        {
+            return currentStage;
+        }
+
         public bool SetNickname(string nick)
         {
             if (nick.Length < 16 && nick.Length > 3 && !Program.currentUsernames.Contains(nick))
@@ -44,6 +49,26 @@ namespace Server
                 return true;
             }
             return false;
+        }
+
+        public string GetNickname()
+        {
+            return nickname;
+        }
+
+        public void SetAESKey(string key)
+        {
+            aesCommunicationKey = key;
+        }
+
+        public int GetConnectionId()
+        {
+            return connectionId;
+        }
+
+        public string GetAESKey()
+        {
+            return aesCommunicationKey;
         }
 
         public ConnectionData(int connectionId)

@@ -93,13 +93,13 @@ namespace Server
                         case Telepathy.EventType.Data:
                             ConnectionData connection = connections[msg.connectionId];
 
-                            string msgContents = (connection.aesCommunicationKey != null) ? 
-                                PresharedKeyEncryption.AESDecrypt(Convert.FromBase64String(Encoding.UTF8.GetString(msg.data)), connection.aesCommunicationKey) : 
+                            string msgContents = (connection.GetAESKey() != null) ? 
+                                PresharedKeyEncryption.AESDecrypt(Convert.FromBase64String(Encoding.UTF8.GetString(msg.data)), connection.GetAESKey()) : 
                                 Encoding.UTF8.GetString(msg.data);
 
                             try
                             {
-                                switch (connection.currentStage)
+                                switch (connection.GetConnectionStage())
                                 {
                                     case ConnectionData.ConnectionStage.AwaitingEncryptionSupport:
                                         handler.OnEncryptionSupported(msgContents, ref connection);
@@ -114,11 +114,11 @@ namespace Server
                                         handler.OnMessageReceived(msgContents, ref connection);
                                         break;
                                     default:
-                                        Debug.Log($"Client connection state {connection.currentStage.ToString()} is not supported!", "Missing Support");
+                                        Debug.Log($"Client connection state {connection.GetConnectionStage().ToString()} is not supported!", "Missing Support");
                                         break;
                                 }
 
-                                connections[connection.connectionId] = connection;
+                                connections[connection.GetConnectionId()] = connection;
                             }
                             catch (Exception e)
                             {
@@ -140,7 +140,7 @@ namespace Server
         {
             foreach (ConnectionData connection in connections.Values)
             {
-                if (connection.currentStage == ConnectionData.ConnectionStage.ConnectionEstablished)
+                if (connection.GetConnectionStage() == ConnectionData.ConnectionStage.ConnectionEstablished)
                 {
                     connection.SendMessage(msg);
                 }
@@ -150,10 +150,10 @@ namespace Server
         public static void KickUser(ConnectionData connection, string reason)
         {
             connection.SendMessage("Kicked from server, reason: " + reason);
-            server.Disconnect(connection.connectionId);
-            if (connection.nickname != null && connection.nickname != "")
+            server.Disconnect(connection.GetConnectionId());
+            if (connection.GetNickname() != null && connection.GetNickname() != "")
             {
-                BroadcastMsg($"User {connection.nickname} was kicked for '{reason}'");
+                BroadcastMsg($"User {connection.GetNickname()} was kicked for '{reason}'");
             }
             //handler.OnDisconnected(connection.connectionId);
         }

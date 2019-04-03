@@ -20,10 +20,10 @@ namespace Server
         {
             ConnectionData connectData = Program.connections[connectionId];
             connectData.RemoveConnection();
-            Debug.Log((connectData.nickname != null ? "User " + connectData.nickname : "Unknown User") + " Disconnected", "Disconnection");
-            if (connectData.nickname != null)
+            Debug.Log((connectData.GetNickname() != null ? "User " + connectData.GetNickname() : "Unknown User") + " Disconnected", "Disconnection");
+            if (connectData.GetNickname() != null)
             {
-                Program.BroadcastMsg("A user who went by " + connectData.nickname + ", has left the chat... They shall me missed!");
+                Program.BroadcastMsg("A user who went by " + connectData.GetNickname() + ", has left the chat... They shall me missed!");
             }
         }
 
@@ -31,7 +31,7 @@ namespace Server
         {
             if (response == "Yes")
             {
-                connection.currentStage = ConnectionData.ConnectionStage.AwaitingEncryptionSetup;
+                connection.SetStage(ConnectionData.ConnectionStage.AwaitingEncryptionSetup);
             }
             else
             {
@@ -45,7 +45,7 @@ namespace Server
             {
                 try
                 {
-                    OnPresharedAESCheck(PresharedKeyEncryption.AESDecrypt(Convert.FromBase64String(response), PresharedKeyEncryption.GetAESHash("1337")/*PresharedKeyEncryption.GetAESHash(Program.password)*/), ref connection);
+                    OnPresharedAESCheck(PresharedKeyEncryption.AESDecrypt(Convert.FromBase64String(response), PresharedKeyEncryption.GetAESHash(Program.password)), ref connection);
                 }
                 catch
                 {
@@ -63,12 +63,12 @@ namespace Server
             if (passwordToCheck == Program.password)
             {
                 Debug.Log("A user has established communication. Waiting for a username...", "User Login Success");
-                connection.currentStage = ConnectionData.ConnectionStage.AwaitingNickname;
+                connection.SetStage(ConnectionData.ConnectionStage.AwaitingNickname);
                 connection.SendMessage("V");
                 string newKey = Convert.ToBase64String(PresharedKeyEncryption.GenerateAESKey());
-                connection.aesCommunicationKey = PresharedKeyEncryption.GetAESHash(Program.password);
+                connection.SetAESKey(PresharedKeyEncryption.GetAESHash(Program.password));
                 connection.SendMessage(newKey);
-                connection.aesCommunicationKey = newKey;
+                connection.SetAESKey(newKey);
                 connection.SendMessage("Welcome to the server client! Please send your nickname.");
             }
             else
@@ -81,7 +81,7 @@ namespace Server
         public virtual void OnNoEncryption(ref ConnectionData connection)
         {
             Debug.Log("A user has established communication. Waiting for a username...", "User Connected");
-            connection.currentStage = ConnectionData.ConnectionStage.AwaitingNickname;
+            connection.SetStage(ConnectionData.ConnectionStage.AwaitingNickname);
             connection.SendMessage("Welcome to the server client! Please send your nickname.");
         }
 
@@ -92,8 +92,8 @@ namespace Server
             if (result)
             {
                 Debug.Log("The username '" + msgContents + "' was available and valid. Welcome " + msgContents + "!", "Nickname");
-                connection.currentStage = ConnectionData.ConnectionStage.ConnectionEstablished;
-                connection.SendMessage("Welcome " + connection.nickname + "!");
+                connection.SetStage(ConnectionData.ConnectionStage.ConnectionEstablished);
+                connection.SendMessage("Welcome " + connection.GetNickname() + "!");
                 connection.SendMessage("V");
                 connection.SendMessage("Server: Daily Message:\n" + Program.dailyMsg);
                 Program.BroadcastMsg("A user who goes by the name of " + msgContents + ", has joined the chat!");
@@ -107,8 +107,8 @@ namespace Server
 
         public virtual void OnMessageReceived(string msgContents, ref ConnectionData connection)
         {
-            Debug.Log(connection.nickname + " said: " + msgContents, "User Message");
-            Program.BroadcastMsg(connection.nickname + ": " + msgContents);
+            Debug.Log(connection.GetNickname() + " said: " + msgContents, "User Message");
+            Program.BroadcastMsg(connection.GetNickname() + ": " + msgContents);
         }
     }
 }
