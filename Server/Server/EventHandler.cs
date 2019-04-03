@@ -12,6 +12,7 @@ namespace Server
         {
             Program.connections.Add(connectionId, new ConnectionData(connectionId));
             Program.connections[connectionId].SendMessage(Program.passwordProtected ? "passwordProtected" : "");
+            Program.connections[connectionId].SendMessage(Program.passwordProtected ? "PRESHARED-AES" : "N/A");
             Debug.Log("A user has connected, they have been notified of the servers password protection status.", "New Connection");
         }
 
@@ -26,14 +27,41 @@ namespace Server
             }
         }
 
-        public virtual void OnPasswordCheck(string passwordToCheck, ConnectionData connection)
+        public virtual void OnEncryptionSupported(string response, ref ConnectionData connection)
+        {
+            if (response == "Yes")
+            {
+                connection.currentStage = ConnectionData.ConnectionStage.AwaitingEncryptionSetup;
+            }
+            else
+            {
+                Program.KickUser(connection, "Client does not support the encryption required by the server.");
+            }
+        }
+
+        public virtual void OnEncryptionSetup(string response, ref ConnectionData connection)
+        {
+            if (Program.passwordProtected)
+            {
+                OnPresharedAESCheck(PresharedKeyEncryption.AESDecrypt(Encoding.UTF8.GetBytes(response), Program.password), ref connection);
+            }
+            else
+            {
+                OnNoEncryption(ref connection);
+            }
+        }
+
+        public virtual void OnPresharedAESCheck(string passwordToCheck, ref ConnectionData connection)
         {
             if (passwordToCheck == Program.password)
             {
                 Debug.Log("A user has established communication. Waiting for a username...", "User Login Success");
                 connection.currentStage = ConnectionData.ConnectionStage.AwaitingNickname;
-                connection.SendMessage("V");
                 connection.SendMessage("Welcome to the server client! Please send your nickname.");
+                connection.SendMessage("V");
+                byte[] newKey = PresharedKeyEncryption.GenerateAESKey();
+                connection.aesCommunicationKey = Encoding.UTF8.GetString(newKey);
+                connection.SendMessage(PresharedKeyEncryption.AESEncrypt(connection.aesCommunicationKey, Program.password));
             }
             else
             {
@@ -42,14 +70,14 @@ namespace Server
             }
         }
 
-        public virtual void OnNotPasswordProtected(ConnectionData connection)
+        public virtual void OnNoEncryption(ref ConnectionData connection)
         {
             Debug.Log("A user has established communication. Waiting for a username...", "User Connected");
             connection.currentStage = ConnectionData.ConnectionStage.AwaitingNickname;
             connection.SendMessage("Welcome to the server client! Please send your nickname.");
         }
 
-        public virtual void OnUsernameSetAttempt(string msgContents, ConnectionData connection)
+        public virtual void OnUsernameSetAttempt(string msgContents, ref ConnectionData connection)
         {
             Debug.Log("A user has requested to use the username '" + msgContents + "'", "Nickname");
             bool result = connection.SetNickname(msgContents);
@@ -69,7 +97,7 @@ namespace Server
             }
         }
 
-        public virtual void OnMessageReceived(string msgContents, ConnectionData connection)
+        public virtual void OnMessageReceived(string msgContents, ref ConnectionData connection)
         {
             Debug.Log(connection.nickname + " said: " + msgContents, "User Message");
             Program.BroadcastMsg(connection.nickname + ": " + msgContents);

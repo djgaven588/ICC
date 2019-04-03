@@ -14,9 +14,12 @@ namespace Server
         public static Telepathy.Server server;
         public static Dictionary<int, ConnectionData> connections = new Dictionary<int, ConnectionData>();
         public static HashSet<string> currentUsernames = new HashSet<string>();
+
         public static string dailyMsg;
         public static bool passwordProtected;
         public static string password;
+
+        public static bool encryptionEnabled;
 
         private static EventHandler handler = new CustomEventHandler();
 
@@ -24,7 +27,9 @@ namespace Server
         {
             if (args == null || args.Length == 0)
             {
-                args = new string[] { "Welcome! This server is in debug mode..." };
+                Debug.Log("Program arguments were not specified, the daily message is set to notify users that this server is not configured properly.", "Daily Message");
+                Debug.Log("Program arguments were not specified, the password is set to none.", "Password Protection");
+                args = new string[] { "Welcome! This server is running the default configuration. Please notify the server operator so they can fix it." };
             }
 
             if (args == null || args.Length == 0 || args[0] == null)
@@ -32,7 +37,8 @@ namespace Server
                 Debug.Log("A daily message was not specified in the program arguments, it is recommended to set this up. Using default daily message...", "Daily Message");
                 dailyMsg = "Welcome to the server! This server does not have a daily message set.\nIf you are the server owner, make sure to run the server with the first parameter as the daily message!";
                 passwordProtected = false;
-                Debug.Log("This server is not password protected. This is fine if you want anyone and everyone to connect, but can be changed to add security. This can be changed by editing the second program argument", "Password Protection");
+                encryptionEnabled = false;
+                Debug.Log("This server is not password protected. This is fine if you want anyone and everyone to connect, but can be changed to add security. This can be changed by editing the second program argument. This server also doesn't have encryption enabled.", "Password Protection");
             }
             else
             {
@@ -42,13 +48,15 @@ namespace Server
                 if (args.Length > 1 && args[1] != null)
                 {
                     passwordProtected = true;
+                    encryptionEnabled = true;
                     password = args[1];
-                    Debug.Log("This server is password protected. The password is " + password + ". You can change this by changing the second program argument when starting the server.", "Password Protection");
+                    Debug.Log("This server is password protected. The password is " + password + ". You can change this by changing the second program argument when starting the server. This server is encrypted.", "Password Protection");
                 }
                 else
                 {
                     passwordProtected = false;
-                    Debug.Log("This server is not password protected. This is fine if you want anyone and everyone to connect, but can be changed to add security. This can be changed by editing the second program argument", "Password Protection");
+                    encryptionEnabled = false;
+                    Debug.Log("This server is not password protected. This is fine if you want anyone and everyone to connect, but can be changed to add security. This can be changed by editing the second program argument. This server is not encrypted.", "Password Protection");
                 }
             }
             new Program().Setup();
@@ -73,11 +81,9 @@ namespace Server
         public void Loop()
         {
             bool serverRun = true;
-
-            Telepathy.Message msg;
             while (serverRun)
             {
-                while (server.GetNextMessage(out msg))
+                while (server.GetNextMessage(out Telepathy.Message msg))
                 {
                     switch (msg.eventType)
                     {
@@ -85,27 +91,38 @@ namespace Server
                             handler.OnConnect(msg.connectionId);
                             break;
                         case Telepathy.EventType.Data:
-                            string msgContents = Encoding.UTF8.GetString(msg.data);
 
                             ConnectionData connection = connections[msg.connectionId];
-                            if (connection.currentStage == ConnectionData.ConnectionStage.NewConnection)
+
+                            string msgContents = (connection.aesCommunicationKey != null) ? PresharedKeyEncryption.AESDecrypt(msg.data, connection.aesCommunicationKey) : Encoding.UTF8.GetString(msg.data);
+
+                            if (connection.currentStage == ConnectionData.ConnectionStage.AwaitingEncryptionSupport)
+                            {
+                                handler.OnEncryptionSupported(msgContents, ref connection);
+                            }
+                            /*
+                            else if (connection.currentStage == ConnectionData.ConnectionStage.NewConnection)
                             {
                                 if (passwordProtected)
                                 {
-                                    handler.OnPasswordCheck(msgContents, connection);
+                                    handler.OnPasswordCheck(msgContents, ref connection);
                                 }
                                 else
                                 {
-                                    handler.OnNotPasswordProtected(connection);
+                                    handler.OnNotPasswordProtected(ref connection);
                                 }
+                            }*/
+                            else if (connection.currentStage == ConnectionData.ConnectionStage.AwaitingEncryptionSetup)
+                            {
+                                handler.OnEncryptionSetup(msgContents, ref connection);
                             }
                             else if (connection.currentStage == ConnectionData.ConnectionStage.AwaitingNickname)
                             {
-                                handler.OnUsernameSetAttempt(msgContents, connection);
+                                handler.OnUsernameSetAttempt(msgContents, ref connection);
                             }
                             else
                             {
-                                handler.OnMessageReceived(msgContents, connection);
+                                handler.OnMessageReceived(msgContents, ref connection);
                             }
 
                             connections[connection.connectionId] = connection;
@@ -117,7 +134,7 @@ namespace Server
                     }
                 }
 
-                Thread.Sleep(250);
+                Thread.Sleep(100);
             }
         }
 
@@ -131,6 +148,13 @@ namespace Server
                     connection.SendMessage(data);
                 }
             }
+        }
+
+        public static void KickUser(ConnectionData connection, string reason)
+        {
+            connection.SendMessage("Kicked from server, reason: " + reason);
+            server.Disconnect(connection.connectionId);
+            //handler.OnDisconnected(connection.connectionId);
         }
 
         public static string GetLocalIPAddress()

@@ -11,13 +11,24 @@ namespace Client
     {
         private static Telepathy.Client client;
         private ClientState state = ClientState.WaitingForPasswordStatus;
+        private bool passwordProtected = false;
+        private EncryptionType encryption = EncryptionType.N_A;
+        private string aesKey = null;
 
         private enum ClientState
         {
             WaitingForPasswordStatus,
+            WaitingForEncryptionMethod,
             PasswordEnabled,
+            FinalizeAESEncryption,
             Nickname,
             Established
+        }
+
+        private enum EncryptionType
+        {
+            PRESHARED_AES,
+            N_A
         }
 
         static void Main(string[] args)
@@ -69,28 +80,45 @@ namespace Client
                             switch (state)
                             {
                                 case ClientState.WaitingForPasswordStatus:
-                                    if (msgContents.Length > 0)
+                                    if (msgContents == "passwordProtected")
                                     {
-                                        Log("This server has a password, please enter the password for this server: ", "Password Protection");
-                                        state = ClientState.PasswordEnabled;
+                                        passwordProtected = true;
+                                    }
+                                    state = ClientState.WaitingForEncryptionMethod;
+                                    break;
+                                case ClientState.WaitingForEncryptionMethod:
+                                    if (msgContents == "PRESHARED-AES")
+                                    {
+                                        encryption = EncryptionType.PRESHARED_AES;
+                                        Log("This server has encryption, and a password. Pleas enter the password...", "Encryption / Password");
+                                        SendMessage("Yes");
+                                    }
+                                    else if (msgContents == "N/A")
+                                    {
+                                        encryption = EncryptionType.N_A;
+                                        Log("This server has no encryption, and no password. Continuing...", "Encryption");
+                                        SendMessage("Yes");
                                     }
                                     else
                                     {
-                                        Log("This server does not have a password. Continuing...", "Password Protection");
-                                        SendMessage("");
-                                        state = ClientState.Nickname;
+                                        Log($"This server wants to use {msgContents} encryption, but this client doesn't support it. Notifying...", "Encryption");
+                                        SendMessage("Not compatible");
                                     }
+                                    state = ClientState.PasswordEnabled;
                                     break;
                                 case ClientState.PasswordEnabled:
                                     if (msgContents == "V")
                                     {
                                         Log("Your password was valid! Continuing...", "Valid Password");
-                                        state = ClientState.Nickname;
+                                        state = (encryption == EncryptionType.PRESHARED_AES) ? ClientState.FinalizeAESEncryption : ClientState.Nickname;
                                     }
                                     else
                                     {
                                         Log(msgContents, "Invalid Password");
                                     }
+                                    break;
+                                case ClientState.FinalizeAESEncryption:
+
                                     break;
                                 case ClientState.Nickname:
                                     if (msgContents == "V")

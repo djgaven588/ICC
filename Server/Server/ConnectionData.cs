@@ -11,6 +11,7 @@ namespace Server
         public int connectionId;
         public string nickname;
         public ConnectionStage currentStage;
+        public string aesCommunicationKey;
 
         public void RemoveConnection()
         {
@@ -23,12 +24,12 @@ namespace Server
 
         public void SendMessage(string data)
         {
-            Program.server.Send(connectionId, Encoding.UTF8.GetBytes(data));
+            Program.server.Send(connectionId, (aesCommunicationKey != null) ? PresharedKeyEncryption.AESEncrypt(data, aesCommunicationKey) : Encoding.UTF8.GetBytes(data));
         }
 
         public void SendMessage(byte[] data)
         {
-            Program.server.Send(connectionId, data);
+            Program.server.Send(connectionId, (aesCommunicationKey != null) ? PresharedKeyEncryption.AESEncrypt(Encoding.UTF8.GetString(data), aesCommunicationKey) : data);
         }
 
         public void SetStage(ConnectionStage stage)
@@ -50,15 +51,15 @@ namespace Server
         public ConnectionData(int connectionId)
         {
             this.connectionId = connectionId;
-            currentStage = ConnectionStage.NewConnection;
+            currentStage = ConnectionStage.AwaitingEncryptionSupport;
             nickname = null;
+            aesCommunicationKey = null;
         }
 
         public enum ConnectionStage
         {
-            NewConnection,
-            AwaitingRSAEncryptedResponse,
-            AwaitingAESEncryptedResonse,
+            AwaitingEncryptionSupport,
+            AwaitingEncryptionSetup,
             AwaitingNickname,
             ConnectionEstablished
         }
