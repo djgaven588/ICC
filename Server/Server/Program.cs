@@ -91,42 +91,40 @@ namespace Server
                             handler.OnConnect(msg.connectionId);
                             break;
                         case Telepathy.EventType.Data:
-
                             ConnectionData connection = connections[msg.connectionId];
 
-                            string msgContents = (connection.aesCommunicationKey != null) ? PresharedKeyEncryption.AESDecrypt(msg.data, connection.aesCommunicationKey) : Encoding.UTF8.GetString(msg.data);
+                            string msgContents = (connection.aesCommunicationKey != null) ? 
+                                PresharedKeyEncryption.AESDecrypt(Convert.FromBase64String(Encoding.UTF8.GetString(msg.data)), connection.aesCommunicationKey) : 
+                                Encoding.UTF8.GetString(msg.data);
 
-                            if (connection.currentStage == ConnectionData.ConnectionStage.AwaitingEncryptionSupport)
+                            try
                             {
-                                handler.OnEncryptionSupported(msgContents, ref connection);
-                            }
-                            /*
-                            else if (connection.currentStage == ConnectionData.ConnectionStage.NewConnection)
-                            {
-                                if (passwordProtected)
+                                switch (connection.currentStage)
                                 {
-                                    handler.OnPasswordCheck(msgContents, ref connection);
+                                    case ConnectionData.ConnectionStage.AwaitingEncryptionSupport:
+                                        handler.OnEncryptionSupported(msgContents, ref connection);
+                                        break;
+                                    case ConnectionData.ConnectionStage.AwaitingEncryptionSetup:
+                                        handler.OnEncryptionSetup(msgContents, ref connection);
+                                        break;
+                                    case ConnectionData.ConnectionStage.AwaitingNickname:
+                                        handler.OnUsernameSetAttempt(msgContents, ref connection);
+                                        break;
+                                    case ConnectionData.ConnectionStage.ConnectionEstablished:
+                                        handler.OnMessageReceived(msgContents, ref connection);
+                                        break;
+                                    default:
+                                        Debug.Log($"Client connection state {connection.currentStage.ToString()} is not supported!", "Missing Support");
+                                        break;
                                 }
-                                else
-                                {
-                                    handler.OnNotPasswordProtected(ref connection);
-                                }
-                            }*/
-                            else if (connection.currentStage == ConnectionData.ConnectionStage.AwaitingEncryptionSetup)
-                            {
-                                handler.OnEncryptionSetup(msgContents, ref connection);
-                            }
-                            else if (connection.currentStage == ConnectionData.ConnectionStage.AwaitingNickname)
-                            {
-                                handler.OnUsernameSetAttempt(msgContents, ref connection);
-                            }
-                            else
-                            {
-                                handler.OnMessageReceived(msgContents, ref connection);
-                            }
 
-                            connections[connection.connectionId] = connection;
-
+                                connections[connection.connectionId] = connection;
+                            }
+                            catch (Exception e)
+                            {
+                                Debug.Log($"Exception caused by message with contents {msg.data}. Exception info: {e.ToString()}", "Caught Exception, On Message Received");
+                                KickUser(connection, "Caused server error");
+                            }
                             break;
                         case Telepathy.EventType.Disconnected:
                             handler.OnDisconnected(msg.connectionId);
@@ -140,12 +138,11 @@ namespace Server
 
         public static void BroadcastMsg(string msg)
         {
-            byte[] data = Encoding.UTF8.GetBytes(msg);
             foreach (ConnectionData connection in connections.Values)
             {
                 if (connection.currentStage == ConnectionData.ConnectionStage.ConnectionEstablished)
                 {
-                    connection.SendMessage(data);
+                    connection.SendMessage(msg);
                 }
             }
         }
@@ -154,6 +151,10 @@ namespace Server
         {
             connection.SendMessage("Kicked from server, reason: " + reason);
             server.Disconnect(connection.connectionId);
+            if (connection.nickname != null && connection.nickname != "")
+            {
+                BroadcastMsg($"User {connection.nickname} was kicked for '{reason}'");
+            }
             //handler.OnDisconnected(connection.connectionId);
         }
 

@@ -23,6 +23,7 @@ namespace Server
                 IV = aesAlg.IV;
 
                 aesAlg.Mode = CipherMode.CBC;
+                aesAlg.Padding = PaddingMode.PKCS7;
 
                 ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
 
@@ -60,12 +61,10 @@ namespace Server
                 Array.Copy(cipherTextCombined, IV, IV.Length);
                 Array.Copy(cipherTextCombined, IV.Length, cipherText, 0, cipherText.Length);
 
-                Debug.Log(Convert.ToBase64String(IV), "IV");
-                Debug.Log(Convert.ToBase64String(cipherText), "CipherText");
-
                 aesAlg.IV = IV;
 
                 aesAlg.Mode = CipherMode.CBC;
+                aesAlg.Padding = PaddingMode.PKCS7;
 
                 ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
 

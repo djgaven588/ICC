@@ -41,6 +41,8 @@ namespace Client
 
         public void Setup()
         {
+            Log(PresharedAESEncryption.AESDecrypt(
+                Convert.FromBase64String(Encoding.UTF8.GetString(Encoding.UTF8.GetBytes(Convert.ToBase64String(PresharedAESEncryption.AESEncrypt("1337", PresharedAESEncryption.GetAESHash("1337")))))), PresharedAESEncryption.GetAESHash("1337")), "Test");
             client = new Telepathy.Client();
             Log("Please enter the IP of the server below.", "Starting");
             string ip = Console.ReadLine();
@@ -79,7 +81,12 @@ namespace Client
                             Log("Connected to server! Waiting for password status...", "Connected");
                             break;
                         case Telepathy.EventType.Data:
-                            string msgContents = (futureMessagesEncrypted) ? PresharedAESEncryption.AESDecrypt(msg.data, aesKey): Encoding.UTF8.GetString(msg.data);
+
+                            string msgContents = (futureMessagesEncrypted) ?
+                                PresharedAESEncryption.AESDecrypt(Convert.FromBase64String(Encoding.UTF8.GetString(msg.data)), aesKey) :
+                                Encoding.UTF8.GetString(msg.data);
+
+                            //string msgContents = (futureMessagesEncrypted) ? PresharedAESEncryption.AESDecrypt(msg.data, aesKey): Encoding.UTF8.GetString(msg.data);
                             switch (state)
                             {
                                 case ClientState.WaitingForPasswordStatus:
@@ -93,7 +100,7 @@ namespace Client
                                     if (msgContents == "PRESHARED-AES")
                                     {
                                         encryption = EncryptionType.PRESHARED_AES;
-                                        Log("This server has encryption, and a password. Pleas enter the password...", "Encryption / Password");
+                                        Log("This server has encryption, and a password. Please enter the password...", "Encryption / Password");
                                         SendMessage("Yes");
                                         state = ClientState.PasswordEnabled;
                                     }
@@ -117,7 +124,7 @@ namespace Client
                                     {
                                         Log("Your password was valid! Continuing...", "Valid Password");
                                         state = (encryption == EncryptionType.PRESHARED_AES) ? ClientState.FinalizeAESEncryption : ClientState.Nickname;
-                                        futureMessagesEncrypted = encryption == EncryptionType.PRESHARED_AES;
+                                        futureMessagesEncrypted = (encryption == EncryptionType.PRESHARED_AES);
                                     }
                                     else
                                     {
@@ -158,7 +165,7 @@ namespace Client
                     SendMessage(messagesToSend.Dequeue());
                 }
 
-                Thread.Sleep(250);
+                Thread.Sleep(100);
             }
         }
 
@@ -168,7 +175,10 @@ namespace Client
             {
                 aesKey = PresharedAESEncryption.GetAESHash(content);
             }
-            client.Send((futureMessagesEncrypted || state == ClientState.PasswordEnabled) ? PresharedAESEncryption.AESEncrypt(content, aesKey): Encoding.UTF8.GetBytes(content));
+
+            client.Send(Encoding.UTF8.GetBytes(
+                            (futureMessagesEncrypted || state == ClientState.PasswordEnabled) ? Convert.ToBase64String(PresharedAESEncryption.AESEncrypt(content, aesKey)) : content
+                        ));
         }
 
         public static void Log(string content, string from)

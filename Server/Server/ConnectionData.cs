@@ -24,12 +24,10 @@ namespace Server
 
         public void SendMessage(string data)
         {
-            Program.server.Send(connectionId, (aesCommunicationKey != null) ? PresharedKeyEncryption.AESEncrypt(data, aesCommunicationKey) : Encoding.UTF8.GetBytes(data));
-        }
-
-        public void SendMessage(byte[] data)
-        {
-            Program.server.Send(connectionId, (aesCommunicationKey != null) ? PresharedKeyEncryption.AESEncrypt(Encoding.UTF8.GetString(data), aesCommunicationKey) : data);
+            Program.server.Send(connectionId,
+                        Encoding.UTF8.GetBytes(
+                            (aesCommunicationKey != null) ? Convert.ToBase64String(PresharedKeyEncryption.AESEncrypt(data, aesCommunicationKey)) : data
+                        ));
         }
 
         public void SetStage(ConnectionStage stage)

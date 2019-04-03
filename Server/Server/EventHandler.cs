@@ -43,17 +43,13 @@ namespace Server
         {
             if (Program.passwordProtected)
             {
-                Debug.Log(response, "Encrypted password");
-                Debug.Log(Convert.ToBase64String(Encoding.UTF8.GetBytes(response)), "Encrypted password, base64");
-                Debug.Log(Encoding.UTF8.GetString(Encoding.UTF8.GetBytes(response)), "Encrypted password, to string");
                 try
                 {
-                    Debug.Log(PresharedKeyEncryption.GetAESHash(Program.password), "Hash");
-                    OnPresharedAESCheck(PresharedKeyEncryption.AESDecrypt(Encoding.UTF8.GetBytes(response), PresharedKeyEncryption.GetAESHash(Program.password)), ref connection);
+                    OnPresharedAESCheck(PresharedKeyEncryption.AESDecrypt(Convert.FromBase64String(response), PresharedKeyEncryption.GetAESHash("1337")/*PresharedKeyEncryption.GetAESHash(Program.password)*/), ref connection);
                 }
-                catch (Exception e)
+                catch
                 {
-                    Debug.Log(e.ToString(), "EXCEPTION");
+                    connection.SendMessage("Failed authentication, please try again. If you know the password you entered is correct, please contact your server admin.");
                 }
             }
             else
@@ -70,7 +66,8 @@ namespace Server
                 connection.currentStage = ConnectionData.ConnectionStage.AwaitingNickname;
                 connection.SendMessage("V");
                 string newKey = Convert.ToBase64String(PresharedKeyEncryption.GenerateAESKey());
-                connection.SendMessage(PresharedKeyEncryption.AESEncrypt(newKey, Program.password));
+                connection.aesCommunicationKey = PresharedKeyEncryption.GetAESHash(Program.password);
+                connection.SendMessage(newKey);
                 connection.aesCommunicationKey = newKey;
                 connection.SendMessage("Welcome to the server client! Please send your nickname.");
             }
