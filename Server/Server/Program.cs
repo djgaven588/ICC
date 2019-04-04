@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -25,40 +26,33 @@ namespace Server
 
         static void Main(string[] args)
         {
-            if (args == null || args.Length == 0)
+            if (File.Exists("DailyMessage.txt"))
             {
-                Debug.Log("Program arguments were not specified, the daily message is set to notify users that this server is not configured properly.", "Daily Message");
-                Debug.Log("Program arguments were not specified, the password is set to none.", "Password Protection");
-                args = new string[] { "Welcome! This server is running the default configuration. Please notify the server operator so they can fix it." };
-            }
-
-            if (args == null || args.Length == 0 || args[0] == null)
-            {
-                Debug.Log("A daily message was not specified in the program arguments, it is recommended to set this up. Using default daily message...", "Daily Message");
-                dailyMsg = "Welcome to the server! This server does not have a daily message set.\nIf you are the server owner, make sure to run the server with the first parameter as the daily message!";
-                passwordProtected = false;
-                encryptionEnabled = false;
-                Debug.Log("This server is not password protected. This is fine if you want anyone and everyone to connect, but can be changed to add security. This can be changed by editing the second program argument. This server also doesn't have encryption enabled.", "Password Protection");
+                string contents = File.ReadAllText("DailyMessage.txt");
+                Debug.Log($"Daily message set to {contents}. You can modify the 'DailyMessage.txt' file next to your executable to modify this.", "Daily Message");
+                dailyMsg = contents;
             }
             else
             {
-                Debug.Log("The daily message is: " + args[0] + ". You can change this by changing the first program argument when starting the server.", "Daily Message");
-                dailyMsg = args[0];
-
-                if (args.Length > 1 && args[1] != null)
-                {
-                    passwordProtected = true;
-                    encryptionEnabled = true;
-                    password = args[1];
-                    Debug.Log("This server is password protected. The password is " + password + ". You can change this by changing the second program argument when starting the server. This server is encrypted.", "Password Protection");
-                }
-                else
-                {
-                    passwordProtected = false;
-                    encryptionEnabled = false;
-                    Debug.Log("This server is not password protected. This is fine if you want anyone and everyone to connect, but can be changed to add security. This can be changed by editing the second program argument. This server is not encrypted.", "Password Protection");
-                }
+                string dailyMessage = "Welcome! This server is running the default configuration. Please notify the server operator so they can fix it.";
+                Debug.Log($"A daily message file doesn't exist. You can create one nameed 'DailyMessage.txt' next to the server executable to modify the daily message. It was set to {dailyMessage}.", "Daily Message");
+                dailyMsg = dailyMessage;
             }
+
+            if (args == null || args.Length == 0 || args[0].Length == 0)
+            {
+                Debug.Log("This server was started with no password. You can change the first parameter when starting the server to modify the password. This server is not encrypted.", "Password Protection");
+                passwordProtected = false;
+                encryptionEnabled = false;
+            }
+            else
+            {
+                passwordProtected = true;
+                encryptionEnabled = true;
+                password = args[0];
+                Debug.Log("This server is password protected. The password is " + password + ". You can change this by changing the second program argument when starting the server. This server is encrypted.", "Password Protection");
+            }
+
             new Program().Setup();
         }
 

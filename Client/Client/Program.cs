@@ -41,8 +41,6 @@ namespace Client
 
         public void Setup()
         {
-            Log(PresharedAESEncryption.AESDecrypt(
-                Convert.FromBase64String(Encoding.UTF8.GetString(Encoding.UTF8.GetBytes(Convert.ToBase64String(PresharedAESEncryption.AESEncrypt("1337", PresharedAESEncryption.GetAESHash("1337")))))), PresharedAESEncryption.GetAESHash("1337")), "Test");
             client = new Telepathy.Client();
             Log("Please enter the IP of the server below.", "Starting");
             string ip = Console.ReadLine();
@@ -58,17 +56,14 @@ namespace Client
             bool clientOpen = true;
             Queue<string> messagesToSend = new Queue<string>();
 
-            var thread = new Thread(() =>
-            {
-                while (clientOpen)
+            var thread = new Thread(() => { while (clientOpen)
                 {
                     string input = Console.ReadLine();
                     messagesToSend.Enqueue(input);
                 }
-            })
-            {
-                IsBackground = true
-            };
+            });
+
+            thread.IsBackground = true;
             thread.Start();
 
             while (clientOpen)
@@ -85,8 +80,6 @@ namespace Client
                             string msgContents = (futureMessagesEncrypted) ?
                                 PresharedAESEncryption.AESDecrypt(Convert.FromBase64String(Encoding.UTF8.GetString(msg.data)), aesKey) :
                                 Encoding.UTF8.GetString(msg.data);
-
-                            //string msgContents = (futureMessagesEncrypted) ? PresharedAESEncryption.AESDecrypt(msg.data, aesKey): Encoding.UTF8.GetString(msg.data);
                             switch (state)
                             {
                                 case ClientState.WaitingForPasswordStatus:
@@ -154,6 +147,10 @@ namespace Client
                             break;
                         case Telepathy.EventType.Disconnected:
                             Log("Disconnected from server", "Disconnected");
+
+                            client.Disconnect();
+
+                            Log("Please restart the client in order to connect to a server.", "Connection Closed");
                             break;
                         default:
                             break;
@@ -176,9 +173,10 @@ namespace Client
                 aesKey = PresharedAESEncryption.GetAESHash(content);
             }
 
-            client.Send(Encoding.UTF8.GetBytes(
-                            (futureMessagesEncrypted || state == ClientState.PasswordEnabled) ? Convert.ToBase64String(PresharedAESEncryption.AESEncrypt(content, aesKey)) : content
-                        ));
+            client.Send(
+                Encoding.UTF8.GetBytes(
+                    (futureMessagesEncrypted || state == ClientState.PasswordEnabled) ? Convert.ToBase64String(PresharedAESEncryption.AESEncrypt(content, aesKey)) : content
+            ));
         }
 
         public static void Log(string content, string from)

@@ -52,10 +52,12 @@ namespace Server
                 return connection;
             }
 
+            string oldUsername = args[1];
             bool result = connection.SetNickname(args[1]);
             if (result)
             {
                 connection.SendMessage($"The nickname '{args[1]}' was available and valid! Your new nickname is set!");
+                Program.currentUsernames.Remove(oldUsername);
             }
             else
             {
@@ -66,9 +68,7 @@ namespace Server
 
         private ConnectionData HelpMethod(string[] args, ConnectionData connection)
         {
-            connection.SendMessage("--Help Center--");
-            connection.SendMessage("");
-            connection.SendMessage("-Available Commands-");
+            connection.SendMessage("--Help Center--\r\n \r\n-Available Commands-");
             foreach (string item in commands.Keys)
             {
                 connection.SendMessage("/" + item);
