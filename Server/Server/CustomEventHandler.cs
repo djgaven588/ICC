@@ -38,8 +38,10 @@ namespace Server
         {
             Command cmdNick = ChangeNicknameMethod;
             Command cmdHelp = HelpMethod;
+            Command cmdOnline = OnlineMethod;
             commands.Add("nick", cmdNick);
             commands.Add("help", cmdHelp);
+            commands.Add("online", cmdOnline);
         }
 
         private delegate ConnectionData Command(string[] args, ConnectionData connection);
@@ -68,11 +70,34 @@ namespace Server
 
         private ConnectionData HelpMethod(string[] args, ConnectionData connection)
         {
-            connection.SendMessage("--Help Center--\r\n \r\n-Available Commands-");
+            string newLine = "\r\n";
+            string data = $"{newLine}";
             foreach (string item in commands.Keys)
             {
-                connection.SendMessage("/" + item);
+                data += $"/{item}{newLine}";
             }
+            connection.SendMessage($"--Help Center--{newLine} {newLine}-Available Commands-{data}");
+            return connection;
+        }
+
+        private ConnectionData OnlineMethod(string[] args, ConnectionData connection)
+        {
+            string users = "";
+            int counter = 0;
+            foreach (string item in Program.currentUsernames)
+            {
+                if (counter == Program.currentUsernames.Count - 1)
+                    users += "and ";
+
+                users += item;
+
+                if (counter < Program.currentUsernames.Count - 1)
+                {
+                    users += ", ";
+                }
+                counter++;
+            }
+            connection.SendMessage($"Currently online users: {users}");
             return connection;
         }
     }
